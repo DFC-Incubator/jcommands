@@ -1,12 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xmlns:context="http://www.springframework.org/schema/context"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
        http://www.springframework.org/schema/beans/spring-beans.xsd
        http://www.springframework.org/schema/context 
        http://www.springframework.org/schema/context/spring-context-3.1.xsd">
 
-  <context:component-scan 
-           base-package="org.irods.jargon.jcommands" />
+	<context:component-scan base-package="org.irods.jargon.jcommands" />
 
+	<bean id="irodsConnectionManager"
+		class="org.irods.jargon.core.connection.IRODSSimpleProtocolManager"
+		factory-method="instance" init-method="initialize" destroy-method="destroy" />
+
+
+	<bean id="irodsSession" class="org.irods.jargon.core.connection.IRODSSession">
+		<property
+			name="irodsProtocolManager" ref="irodsConnectionManager" />
+	</bean>
+
+	<bean id="irodsAccessObjectFactory" class="org.irods.jargon.core.pub.IRODSAccessObjectFactoryImpl">
+		<constructor-arg ref="irodsSession" />
+	</bean>
 </beans>
