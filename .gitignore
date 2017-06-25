@@ -6,6 +6,7 @@
 **/*.eml
 .idea
 *.iml
+*.zip
 .project
 .idea
 .metadata
