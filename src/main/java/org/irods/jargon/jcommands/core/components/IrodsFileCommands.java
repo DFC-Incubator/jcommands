@@ -188,9 +188,9 @@ public class IrodsFileCommands implements CommandMarker {
 					.instanceIRODSFile(shellContext.getCurrentIrodsPath());
 			if (cdVal.startsWith("/")) {
 				currFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
-						.instanceIRODSFile("/");
+						.instanceIRODSFile(cdVal);
 			} else if (cdVal.equals("..")) {
-				currFile.getParentFile();
+				currFile = (IRODSFile) currFile.getParentFile();
 
 			} else {
 				currFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
