@@ -5,8 +5,6 @@ package org.irods.jargon.jcommands.core.components;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import org.apache.commons.io.FileUtils;
 import org.irods.jargon.jcommands.core.CoreUtils;
@@ -63,14 +61,7 @@ public class LocalFileCommands implements CommandMarker {
 
 	@CliCommand(value = "cd", help = "display directory contents under current directory")
 	public String cdCommand(@CliOption(key = { "", "text" }) String cdVal) {
-		File currFile;
-		if (cdVal.startsWith("/")) {
-			currFile = new File(cdVal);
-
-		} else {
-			Path currPath = Paths.get(shellContext.getCurrentLocalPath()).resolve(cdVal);
-			currFile = currPath.toFile();
-		}
+		File currFile = coreUtils.resolveLocalPathToFile(cdVal);
 
 		if (!currFile.exists()) {
 			return "Error: path does not exist";

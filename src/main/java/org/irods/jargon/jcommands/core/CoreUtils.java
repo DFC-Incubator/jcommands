@@ -7,7 +7,10 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.irods.jargon.core.exception.JargonException;
+import org.irods.jargon.core.exception.JargonRuntimeException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
+import org.irods.jargon.core.pub.io.IRODSFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -96,10 +99,46 @@ public class CoreUtils {
 		if (dir.startsWith("/")) {
 			path = Paths.get(dir);
 		} else {
-			path = Paths.get(shellContext.getCurrentLocalPath()).resolve(dir);
+			path = Paths.get(shellContext.getCurrentLocalPath()).resolve(dir).normalize();
 		}
 
 		return path.toFile();
+
+	}
+
+	/**
+	 * Given a irods path fragment (relative or absolute) resolve in the context
+	 * of the current irods path
+	 * 
+	 * @param dir
+	 *            <code>String</code> with the path fragment
+	 * @return {@link IRODSFile} that is the resolution of the path fragment
+	 *         against the current irods path
+	 */
+	public IRODSFile resolveIrodsPathToFile(String dir) {
+		if (dir == null || dir.isEmpty()) {
+			try {
+				return irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
+						.instanceIRODSFile(shellContext.getCurrentIrodsPath());
+			} catch (JargonException e) {
+				throw new JargonRuntimeException("exception resolving file:" + e.getMessage());
+			}
+		}
+
+		Path path;
+		if (dir.startsWith("/")) {
+			path = Paths.get(dir);
+		} else {
+			path = Paths.get(shellContext.getCurrentIrodsPath()).resolve(dir).normalize();
+		}
+
+		try {
+			return irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
+					.instanceIRODSFile(path.toString());
+		} catch (JargonException e) {
+			throw new JargonRuntimeException("exception resolving file:" + e.getMessage());
+
+		}
 
 	}
 }

@@ -48,14 +48,17 @@ Note that --resc switch can set default storage resource here
 * pwd
 * cd
 * ls (no -la yet)
+* mkdir
+* rm
 
 ### current irods file commands
 
 * ipwd
 * icd
 * ils
+* irm
+* imkdir
 
-Note that absolute path, relative path, and .. are supported, but it's not super sophisticated yet on path resolution
 
 
 ### data transfer
@@ -69,15 +72,43 @@ iput (--local, --remote, --overwrite)  if remote is not specified it uses curren
 
 recursive not supported yet
 
-right now the feedback just dumps status callbacks, we can make a nice progress bar later
+right now the feedback just dumps status callbacks, we can make a nice progress bar later.  Here's an example 
 
+```
+iRODS>icd image1
+/zone1/home/test1/braini/exp2/smple3/image1
+iRODS>ils
+
+    Channel1
+    Channel2
+    Channel3
+    Channel4
+iRODS>icd Channel1
+/zone1/home/test1/braini/exp2/smple3/image1/Channel1
+iRODS>ils
+
+    analysis.png
+iRODS>ipwd
+/zone1/home/test1/braini/exp2/smple3/image1/Channel1
+iRODS>pwd
+/home/mcc/temp/hello
+iRODS>iget --remote analysis.png
+
+
+```
 
 #### iget
 
-Work in progress
+iget (--local, --remote, --overwrite) if local is not specified it uses current local directory
 
-I should have time to add mkdir amd rm in time for Monday
+Here's an example
 
+```
+iRODS>ipwd
+/zone1/home/test1/boo/booyah/zip/zap
+iRODS>iput --local Odum_irodsUsersGroup_June_2016.pptx
+
+```
 
 # Logging/debugging
 

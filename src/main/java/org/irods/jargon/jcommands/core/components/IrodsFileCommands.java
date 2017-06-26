@@ -14,6 +14,7 @@ import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.transfer.TransferControlBlock;
 import org.irods.jargon.core.utils.MiscIRODSUtils;
+import org.irods.jargon.jcommands.core.CoreUtils;
 import org.irods.jargon.jcommands.core.ShellContext;
 import org.irods.jargon.jcommands.core.components.transfer.ConsoleCallbackListener;
 import org.slf4j.Logger;
@@ -34,6 +35,9 @@ import org.springframework.stereotype.Component;
 public class IrodsFileCommands implements CommandMarker {
 
 	public static final Logger log = LoggerFactory.getLogger(IrodsFileCommands.class);
+
+	@Autowired
+	private CoreUtils coreUtils;
 
 	@Autowired
 	private IRODSAccessObjectFactory irodsAccessObjectFactory;
@@ -276,12 +280,7 @@ public class IrodsFileCommands implements CommandMarker {
 
 		try {
 
-			Path currPath = Paths.get(shellContext.getCurrentIrodsPath()).resolve(cdVal);
-
-			log.info("resolved new path:{}", currPath);
-
-			IRODSFile currFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
-					.instanceIRODSFile(currPath.toString());
+			IRODSFile currFile = coreUtils.resolveIrodsPathToFile(cdVal);
 
 			if (!currFile.exists()) {
 				return "Error: path does not exist";
@@ -293,12 +292,62 @@ public class IrodsFileCommands implements CommandMarker {
 			shellContext.setCurrentIrodsPath(currFile.getAbsolutePath());
 			return shellContext.getCurrentIrodsPath();
 
-		} catch (JargonException e) {
-			log.error("jargon exception getting file", e);
-			return "Error:" + e.getMessage();
 		} finally {
 			irodsAccessObjectFactory.closeSessionAndEatExceptions();
 		}
+
+	}
+
+	@CliCommand(value = "irm", help = "delete a file or directory")
+	public String irmCommand(@CliOption(key = { "", "file" }, mandatory = true, help = "file to delete") String dir,
+			@CliOption(key = {
+					"force" }, mandatory = false, specifiedDefaultValue = "false", help = "indicates force, required for directory") String force) {
+
+		if (shellContext.getCurrentIrodsAccount() == null) {
+			log.warn("no iinit done");
+			return "Error: no iinit done";
+		}
+
+		IRODSFile irodsFile = coreUtils.resolveIrodsPathToFile(dir);
+		boolean isForce = coreUtils.resolveBoolValue(force);
+
+		if (irodsFile.isDirectory()) {
+			if (!isForce) {
+				log.warn("delete dir with no force");
+				return "Error: delete directory with no force, use --force true flag";
+			}
+			irodsFile.deleteWithForceOption();
+		} else if (isForce) {
+
+			irodsFile.deleteWithForceOption();
+		} else {
+			irodsFile.delete();
+		}
+
+		return "Success!";
+
+	}
+
+	@CliCommand(value = "imkdir", help = "create a subdirectory")
+	public String imkdirCommand(@CliOption(key = { "", "dir" }, mandatory = true) String dir,
+			@CliOption(key = { "parent" }, mandatory = false, specifiedDefaultValue = "false") String parent) {
+
+		if (shellContext.getCurrentIrodsAccount() == null) {
+			log.warn("no iinit done");
+			return "Error: no iinit done";
+		}
+
+		boolean isMakeParent = coreUtils.resolveBoolValue(parent);
+
+		IRODSFile irodsFile = coreUtils.resolveIrodsPathToFile(dir);
+
+		if (isMakeParent) {
+			irodsFile.mkdirs();
+		} else {
+			irodsFile.mkdir();
+		}
+
+		return "Success!";
 
 	}
 
@@ -315,6 +364,21 @@ public class IrodsFileCommands implements CommandMarker {
 	 */
 	public void setIrodsAccessObjectFactory(IRODSAccessObjectFactory irodsAccessObjectFactory) {
 		this.irodsAccessObjectFactory = irodsAccessObjectFactory;
+	}
+
+	/**
+	 * @return the coreUtils
+	 */
+	public CoreUtils getCoreUtils() {
+		return coreUtils;
+	}
+
+	/**
+	 * @param coreUtils
+	 *            the coreUtils to set
+	 */
+	public void setCoreUtils(CoreUtils coreUtils) {
+		this.coreUtils = coreUtils;
 	}
 
 }
