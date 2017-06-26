@@ -1,6 +1,10 @@
 # jcommands
 Jargon-based icommands console
 
+## Prerequisites
+
+- JDK 1.8
+
 ## Install
 
 Download jcommands.zip and extract.  cd to that directory and run jcommands.sh from a terminal
