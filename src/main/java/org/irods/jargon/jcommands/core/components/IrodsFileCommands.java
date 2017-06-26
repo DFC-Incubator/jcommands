@@ -83,14 +83,15 @@ public class IrodsFileCommands implements CommandMarker {
 
 	@CliCommand(value = "iput", help = "transfer a file from local to irods")
 	public String iPut(
-			@CliOption(key = { "local" }, mandatory = true, help = "local file, relative or absolute") String localFile,
 			@CliOption(key = {
-					"remote" }, help = "irods file, relative or absolute, omit for current dir") String irodsFile,
+					"local" }, mandatory = true, help = "local file, relative or absolute") String localFileAbsPath,
+			@CliOption(key = {
+					"remote" }, help = "irods file, relative or absolute, omit for current dir") String irodsFileAbsPath,
 			@CliOption(key = {
 					"overwrite" }, help = "indicates overwrite", specifiedDefaultValue = "false") String overwrite) {
 		log.info("iput()");
-		log.info("localFile:{}", localFile);
-		log.info("irodsFile:{}", irodsFile);
+		log.info("localFile:{}", localFileAbsPath);
+		log.info("irodsFile:{}", irodsFileAbsPath);
 		log.info("overwrite:{}", overwrite);
 
 		if (shellContext.getCurrentIrodsAccount() == null) {
@@ -115,38 +116,38 @@ public class IrodsFileCommands implements CommandMarker {
 
 			ConsoleCallbackListener listener = new ConsoleCallbackListener();
 
-			File sourceFile;
-			if (localFile.startsWith("/")) {
+			File localFile;
+			if (localFileAbsPath.startsWith("/")) {
 				log.info("local file absolute");
-				sourceFile = new File(localFile);
+				localFile = new File(localFileAbsPath);
 			} else {
 				log.info("relative path for local file");
-				Path localPath = Paths.get(shellContext.getCurrentLocalPath()).resolve(localFile);
-				sourceFile = localPath.toFile();
+				Path localPath = Paths.get(shellContext.getCurrentLocalPath()).resolve(localFileAbsPath);
+				localFile = localPath.toFile();
 			}
 
-			log.info("checking sourceFile:{}", sourceFile);
-			if (!sourceFile.exists()) {
-				log.error("local file does not exist:{}", sourceFile);
+			log.info("checking sourceFile:{}", localFile);
+			if (!localFile.exists()) {
+				log.error("local file does not exist:{}", localFile);
 				return "Error: local file does not exist";
 			}
 
-			if (!sourceFile.isFile()) {
-				log.error("local file is a directory:{}", sourceFile);
+			if (!localFile.isFile()) {
+				log.error("local file is a directory:{}", localFile);
 				return "Error: local file is a directory, recursive not yet supported";
 			}
 
 			IRODSFile targetFile;
-			if (irodsFile == null || irodsFile.isEmpty()) {
+			if (irodsFileAbsPath == null || irodsFileAbsPath.isEmpty()) {
 				log.info("use current dir");
 				targetFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
 						.instanceIRODSFile(shellContext.getCurrentIrodsPath());
-			} else if (irodsFile.startsWith("/")) {
+			} else if (irodsFileAbsPath.startsWith("/")) {
 				log.info("irods file absolute");
 				targetFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
-						.instanceIRODSFile(irodsFile);
+						.instanceIRODSFile(irodsFileAbsPath);
 			} else {
-				Path remotePath = Paths.get(shellContext.getCurrentIrodsPath()).resolve(irodsFile);
+				Path remotePath = Paths.get(shellContext.getCurrentIrodsPath()).resolve(irodsFileAbsPath);
 				targetFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
 						.instanceIRODSFile(remotePath.toString());
 			}
@@ -158,15 +159,102 @@ public class IrodsFileCommands implements CommandMarker {
 			}
 
 			if (!targetFile.isDirectory()) {
-				log.error("target file is a directory:{}", targetFile);
-				return "Error: target file is a directory";
+				log.error("target file isnt a directory:{}", targetFile);
+				return "Error: target file isnt a directory";
 			}
 
 			long startTime = System.currentTimeMillis();
-			dto.putOperation(sourceFile, targetFile, listener, tcb);
+			dto.putOperation(localFile, targetFile, listener, tcb);
 			long endTime = System.currentTimeMillis();
 
-			System.out.println("transfer of " + MiscIRODSUtils.humanReadableByteCount(sourceFile.length()));
+			System.out.println("transfer of " + MiscIRODSUtils.humanReadableByteCount(localFile.length()));
+			System.out.println("completed in " + (endTime - startTime) + " milliseconds");
+			return "Transfer complete";
+		} catch (JargonException e) {
+			log.error("exception in transfer", e);
+			return "Error:" + e.getMessage();
+		} finally {
+			irodsAccessObjectFactory.closeSessionAndEatExceptions();
+		}
+
+	}
+
+	@CliCommand(value = "iget", help = "transfer a file from irods to local")
+	public String iGet(
+			@CliOption(key = {
+					"local" }, mandatory = false, help = "local file, relative or absolute, omit for current dir") String localFileAbsPath,
+			@CliOption(key = {
+					"remote" }, mandatory = true, help = "irods file, relative or absolute") String irodsFileAbsPath,
+			@CliOption(key = {
+					"overwrite" }, help = "indicates overwrite", specifiedDefaultValue = "false") String overwrite) {
+		log.info("iget()");
+		log.info("localFile:{}", localFileAbsPath);
+		log.info("irodsFile:{}", irodsFileAbsPath);
+		log.info("overwrite:{}", overwrite);
+
+		if (shellContext.getCurrentIrodsAccount() == null) {
+			log.warn("no iinit done");
+			return "Error: no iinit done";
+		}
+
+		try {
+			TransferControlBlock tcb = irodsAccessObjectFactory
+					.buildDefaultTransferControlBlockBasedOnJargonProperties();
+
+			if (overwrite == null || overwrite.isEmpty()) {
+				log.info("no overwrite");
+
+			} else if (Boolean.valueOf(overwrite) == true) {
+				log.info("setting overwrite");
+				tcb.getTransferOptions().setForceOption(ForceOption.USE_FORCE);
+			}
+
+			DataTransferOperations dto = irodsAccessObjectFactory
+					.getDataTransferOperations(shellContext.getCurrentIrodsAccount());
+
+			ConsoleCallbackListener listener = new ConsoleCallbackListener();
+
+			IRODSFile irodsFile;
+			if (irodsFileAbsPath.startsWith("/")) {
+				log.info("irods file absolute");
+				irodsFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
+						.instanceIRODSFile(irodsFileAbsPath);
+			} else {
+				log.info("relative path for irods file");
+				Path irodsPath = Paths.get(shellContext.getCurrentIrodsPath()).resolve(irodsFileAbsPath);
+				irodsFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
+						.instanceIRODSFile(irodsPath.toString());
+			}
+
+			log.info("checking irodsFile:{}", irodsFile);
+			if (!irodsFile.exists()) {
+				log.error("irods file does not exist:{}", irodsFile);
+				return "Error: irods file does not exist";
+			}
+
+			if (!irodsFile.isFile()) {
+				log.error("irods file is a directory:{}", irodsFile);
+				return "Error: irods file is a directory, I'm not smart yet";
+			}
+
+			File localFile;
+			if (localFileAbsPath == null || localFileAbsPath.isEmpty()) {
+				localFile = new File(shellContext.getCurrentLocalPath());
+			} else if (localFileAbsPath.startsWith("/")) {
+				log.info("local file absolute");
+				localFile = new File(localFileAbsPath);
+			} else {
+				Path localPath = Paths.get(shellContext.getCurrentLocalPath()).resolve(localFileAbsPath);
+				localFile = localPath.toFile();
+			}
+
+			log.info("checking localFile:{}", localFile);
+
+			long startTime = System.currentTimeMillis();
+			dto.getOperation(irodsFile, localFile, listener, tcb);
+			long endTime = System.currentTimeMillis();
+
+			System.out.println("transfer of " + MiscIRODSUtils.humanReadableByteCount(irodsFile.length()));
 			System.out.println("completed in " + (endTime - startTime) + " milliseconds");
 			return "Transfer complete";
 		} catch (JargonException e) {
