@@ -4,6 +4,8 @@
 package org.irods.jargon.jcommands.core.components;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.irods.jargon.jcommands.core.ShellContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,10 +58,10 @@ public class LocalFileCommands implements CommandMarker {
 		File currFile;
 		if (cdVal.startsWith("/")) {
 			currFile = new File(cdVal);
-		} else if (cdVal.equals("..")) {
-			currFile = new File(shellContext.getCurrentLocalPath()).getParentFile();
+
 		} else {
-			currFile = new File(shellContext.getCurrentLocalPath(), cdVal);
+			Path currPath = Paths.get(shellContext.getCurrentLocalPath()).resolve(cdVal);
+			currFile = currPath.toFile();
 		}
 
 		if (!currFile.exists()) {

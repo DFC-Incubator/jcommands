@@ -4,6 +4,8 @@
 package org.irods.jargon.jcommands.core.components;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.packinstr.TransferOptions.ForceOption;
@@ -119,7 +121,8 @@ public class IrodsFileCommands implements CommandMarker {
 				sourceFile = new File(localFile);
 			} else {
 				log.info("relative path for local file");
-				sourceFile = new File(shellContext.getCurrentLocalPath(), localFile);
+				Path localPath = Paths.get(shellContext.getCurrentLocalPath()).resolve(localFile);
+				sourceFile = localPath.toFile();
 			}
 
 			log.info("checking sourceFile:{}", sourceFile);
@@ -143,9 +146,9 @@ public class IrodsFileCommands implements CommandMarker {
 				targetFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
 						.instanceIRODSFile(irodsFile);
 			} else {
-				log.info("relative path for irods file");
+				Path remotePath = Paths.get(shellContext.getCurrentIrodsPath()).resolve(irodsFile);
 				targetFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
-						.instanceIRODSFile(shellContext.getCurrentIrodsPath(), irodsFile);
+						.instanceIRODSFile(remotePath.toString());
 			}
 
 			log.info("checking targetFile:{}", targetFile);
@@ -184,18 +187,13 @@ public class IrodsFileCommands implements CommandMarker {
 		}
 
 		try {
-			IRODSFile currFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
-					.instanceIRODSFile(shellContext.getCurrentIrodsPath());
-			if (cdVal.startsWith("/")) {
-				currFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
-						.instanceIRODSFile(cdVal);
-			} else if (cdVal.equals("..")) {
-				currFile = (IRODSFile) currFile.getParentFile();
 
-			} else {
-				currFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
-						.instanceIRODSFile(currFile.getAbsolutePath(), cdVal);
-			}
+			Path currPath = Paths.get(shellContext.getCurrentIrodsPath()).resolve(cdVal);
+
+			log.info("resolved new path:{}", currPath);
+
+			IRODSFile currFile = irodsAccessObjectFactory.getIRODSFileFactory(shellContext.getCurrentIrodsAccount())
+					.instanceIRODSFile(currPath.toString());
 
 			if (!currFile.exists()) {
 				return "Error: path does not exist";
